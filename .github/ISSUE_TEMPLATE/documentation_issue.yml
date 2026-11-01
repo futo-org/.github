@@ -1,0 +1,43 @@
+name: Documentation issue
+description: Report a problem with the documentation or suggest a change
+labels: ["documentation"]
+type: task
+body:
+  - type: textarea
+    id: location
+    attributes:
+      label: Affected pages
+      description: Links to the pages or files that have the problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong or missing?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Suggested change
+      description: What you want the documentation to say, or where you expected to find it.
+
+  - type: dropdown
+    id: ai-assistance
+    attributes:
+      label: AI assistance
+      description: Did you use AI tools for any part of this issue? See the [AI Usage Policy](https://github.com/futo-org/.github/blob/main/CONTRIBUTING.md#ai-usage-policy).
+      options:
+        - "No"
+        - "Yes, minimal: grammar fixes or small edits"
+        - "Yes, substantive: AI wrote large parts of this issue or helped research it"
+    validations:
+      required: true
+
+  - type: input
+    id: ai-tools
+    attributes:
+      label: AI tools used
+      description: If you used AI, name the tools and say what they did.
