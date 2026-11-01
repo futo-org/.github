@@ -1,0 +1,90 @@
+[pre-commit]
+parallel = true
+skip = ["merge", "rebase"]
+
+[pre-commit.commands.format-go]
+glob = ["*.go"]
+run = "gofmt -s -w {staged_files}"
+stage_fixed = true
+
+[pre-commit.commands.format-rust]
+glob = ["*.rs"]
+run = "cargo fmt --all"
+stage_fixed = true
+
+[pre-commit.commands.format-just]
+glob = ["*.just", ".justfile"]
+run = 'for f in {staged_files}; do just --justfile "$f" --fmt; done'
+stage_fixed = true
+
+# mise fmt rewrites the config in place on every run, and a mise lock that
+# reads it mid-rewrite prunes every tool from the lockfile, so the two run
+# piped while the rest of pre-commit stays parallel.
+[[pre-commit.jobs]]
+name = "mise"
+glob = [".mise/config.toml", ".mise/conf.d/*.toml"]
+
+[pre-commit.jobs.group]
+piped = true
+
+[[pre-commit.jobs.group.jobs]]
+name = "format-mise"
+run = "mise fmt"
+stage_fixed = true
+
+[[pre-commit.jobs.group.jobs]]
+name = "lock-mise"
+run = 'mise lock && git add -A -- .mise ":(exclude).mise/*.toml"'
+
+# The staged paths go to oxfmt by name, and oxfmt drops those a repository's
+# .prettierignore covers, generated chart docs and schemas among them; when
+# that is every path it was given it exits non-zero, which would fail a
+# commit of only ignored files. Told not to, it exits zero and formats
+# nothing. A repository cannot fix this on its own: remotes merge over the
+# repository's lefthook config, so its exclude or run for these commands
+# never applies.
+[pre-commit.commands.format-json]
+glob = ["*.json", "*.json5", "*.jsonc"]
+# mise lock sidecars are digest-pinned in mise.lock; reformatting them makes
+# `mise install --locked` fail with a digest mismatch.
+exclude = [".mise/locks/**"]
+run = "oxfmt --no-error-on-unmatched-pattern {staged_files}"
+stage_fixed = true
+
+[pre-commit.commands.format-markdown]
+glob = ["*.md", "*.markdown", "*.mdx"]
+run = "oxfmt --no-error-on-unmatched-pattern {staged_files}"
+stage_fixed = true
+
+[pre-commit.commands.format-yaml]
+glob = ["*.yaml", "*.yml"]
+exclude = [".mise/locks/**"]
+run = "oxfmt --no-error-on-unmatched-pattern {staged_files}"
+stage_fixed = true
+
+[pre-commit.commands.actionlint]
+glob = [".github/workflows/*.yaml", ".github/workflows/*.yml"]
+run = '''
+actionlint -shellcheck= \
+  -ignore 'unexpected key "(background|cancel|parallel|wait|wait-all)" for step' \
+  -ignore 'step must run script with "run" section or run action with "uses" section' \
+  -ignore 'specifying action "\$/.*" in invalid format because ref is missing' \
+  -ignore 'reusable workflow call "\$/.*" at "uses" is not following the format' \
+  -ignore 'label "ubuntu-26\.04(-arm)?" is unknown' \
+  {staged_files}
+'''
+
+[pre-commit.commands.shellcheck]
+glob = ["*.sh"]
+run = "shellcheck {staged_files}"
+
+[pre-commit.commands.zizmor]
+glob = [
+  ".github/workflows/*.yaml",
+  ".github/workflows/*.yml",
+  ".github/actions/**/action.yaml",
+  ".github/actions/**/action.yml",
+  "actions/**/action.yaml",
+  "actions/**/action.yml",
+]
+run = "zizmor --offline {staged_files}"
